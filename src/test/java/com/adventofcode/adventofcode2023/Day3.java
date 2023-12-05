@@ -1,11 +1,9 @@
 package com.adventofcode.adventofcode2023;
 
+import static com.adventofcode.adventofcode2023.FileInputReader.getInput;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -84,11 +82,6 @@ public class Day3 {
 
     //
     log.info("result is {}", result);
-  }
-
-  private static List<String> getInput(String pathname) throws IOException {
-    var sampleInput = Files.readAllLines(new File(pathname).toPath(), Charset.defaultCharset());
-    return sampleInput;
   }
 
   private int sumAllSymbols(Stream<Symbol> symbolsWithNumbers) {

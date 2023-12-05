@@ -1,11 +1,9 @@
 package com.adventofcode.adventofcode2023;
 
+import static com.adventofcode.adventofcode2023.FileInputReader.getInput;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +18,7 @@ public class Day1 {
   @Test
   void calibrateValuesPart1() throws IOException {
 
-    var input = Files.readAllLines(new File("src/main/resources/inputDay1.txt").toPath(), Charset.defaultCharset());
+    var input = getInput("inputDay1.txt");
     var sum = input
         .stream()
         .map(line -> line.toLowerCase().replaceAll("[a-z]", ""))
@@ -34,8 +32,7 @@ public class Day1 {
   @Test
   void calibrateValuesPart2() throws IOException {
 
-//    var input = Files.readAllLines(new File("src/main/resources/sampleDay1-2.txt").toPath(), Charset.defaultCharset());
-    var input = Files.readAllLines(new File("src/main/resources/inputDay1.txt").toPath(), Charset.defaultCharset());
+    var input = getInput("inputDay1.txt");
     var sum = getSumV2(input);
     assertThat(sum).isEqualTo(281);//too low 52418
   }
@@ -62,9 +59,6 @@ public class Day1 {
 
   private String replaceNumberStrings(String input) {
     var line = input.toLowerCase();
-//    for (int i = 0; i < numbersAsString.size(); i++) {
-//      line = line.replaceAll(numbersAsString.get(i), String.valueOf(i + 1));
-//    }
     var nextNumber = firstNumberString(line);
     while (nextNumber.isPresent()) {
       line = line.replaceFirst(nextNumber.orElseThrow(), String.valueOf(numbersAsString.indexOf(nextNumber.get()) + 1));

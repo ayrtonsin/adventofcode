@@ -1,11 +1,9 @@
 package com.adventofcode.adventofcode2023;
 
+import static com.adventofcode.adventofcode2023.FileInputReader.getInput;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -68,7 +66,7 @@ public class Day2 {
 
   @Test
   void puzzle1() throws IOException {
-    var sampleInput = Files.readAllLines(new File("src/main/resources/sampleDay2-1.txt").toPath(), Charset.defaultCharset());
+    var sampleInput = getInput("sampleDay2-1.txt");
     var sampleGames = inputsToGames(sampleInput);
     var sampleBag = new Bag(12, 16, 14);
 
@@ -79,7 +77,7 @@ public class Day2 {
     assertThat(result).isEqualTo(8);
 
     var bag = new Bag(12, 13, 14);
-    var input = Files.readAllLines(new File("src/main/resources/inputDay2.txt").toPath(), Charset.defaultCharset());
+    var input = getInput("inputDay2.txt");
     var games = inputsToGames(input);
 
     result = games.stream()
@@ -98,7 +96,7 @@ public class Day2 {
 
   @Test
   void puzzle2() throws IOException {
-    var sampleInput = Files.readAllLines(new File("src/main/resources/sampleDay2-1.txt").toPath(), Charset.defaultCharset());
+    var sampleInput = getInput("sampleDay2-1.txt");
     var sampleGames = inputsToGames(sampleInput);
 
     var result = sampleGames.stream()
@@ -107,7 +105,7 @@ public class Day2 {
         .sum();
     assertThat(result).isEqualTo(2286);
 
-    var input = Files.readAllLines(new File("src/main/resources/inputDay2.txt").toPath(), Charset.defaultCharset());
+    var input = getInput("inputDay2.txt");
     var games = inputsToGames(input);
 
     result = games.stream()
