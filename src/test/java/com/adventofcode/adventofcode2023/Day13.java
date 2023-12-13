@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -44,29 +46,54 @@ public class Day13 {
     }
 
     public int getResult() {
-      return getHorizontalResult() + getVerticalResult();
+      return getVerticalResult() + getHorizontalResult();
     }
 
     private int getVerticalResult() {
 
-      int firstReflection = getFirstReflection();
-      return firstReflection;
-    }
-
-    private int getFirstReflection(char[][] matrix) {
-      int firstReflection = -1;
-      for (int i = 0; i < matrix.length - 1; i++) {
-        var x = matrix[i];
-        var y = matrix[i + 1];
-        if (Arrays.equals(x, y)) {
-          return i;
-        }
-      }
-      return -1;
+      return getAllReflections(transposed())
+              .stream()
+              .peek(System.out::println)
+              .mapToInt(firstReflection ->firstReflection + 1)
+//              .mapToInt(firstReflection -> Math.min(firstReflection + 1, this.transposed().length - firstReflection + 1))
+              .max().orElse(0);
     }
 
     private int getHorizontalResult() {
-      return 0;
+       return getAllReflections(matrix())
+               .stream()
+               .mapToInt(firstReflection -> (firstReflection + 1) * 100)
+//               .mapToInt(firstReflection -> Math.min(firstReflection + 1, this.matrix().length - firstReflection +1) * 100)
+               .max().orElse(0);
+    }
+
+    private List<Integer> getAllReflections(char[][] matrix) {
+      List<Integer> reflections = new ArrayList<>();
+      for (int i = 0; i < matrix.length - 1; i++) {
+        var x = matrix[i];
+        var y = matrix[i + 1];
+        if (Arrays.equals(x, y) && ensureMiddle(matrix, i)) {
+          reflections.add(i);
+        }
+      }
+      return reflections;
+    }
+
+    private boolean ensureMiddle(char[][] matrix, int middleX) {
+      for (int i = 0; i < matrix.length; i++) {
+        int middleToBegin = middleX - i / 2;
+        int middleToEnd = 1 + middleX + i / 2;
+
+        if (middleToEnd >= matrix.length || middleToBegin < 0){
+          return true;
+        }
+        var x = matrix[middleToBegin];
+        var y = matrix[middleToEnd];
+        if(!Arrays.equals(x, y)){
+          return false;
+        }
+      }
+      return true;
     }
   }
 
@@ -76,29 +103,61 @@ public class Day13 {
       List<Pattern> patterns = new ArrayList<>();
       int start = 0;
       for (int i = 0; i < lines.size(); i++) {
-        if (lines.get(0).isBlank()) {
+        if (lines.get(i).isBlank()) {
           patterns.add(Pattern.fromInput(lines.subList(start, i)));
           start = i + 1;
         }
       }
+      patterns.add(Pattern.fromInput(lines.subList(start, lines.size())));
       return new Valley(patterns);
     }
 
     public int getResult() {
       return patterns().stream().mapToInt(Pattern::getResult).sum();
     }
+
+    public int getResultWithSmudge() {
+      return 0;//TODO
+    }
   }
 
   @Test
   void puzzle1() throws IOException {
     var sampleInput = getInput("sampleDay13-1.txt");
-
     var sampleResult = Valley.fromInput(sampleInput).getResult();
     assertThat(sampleResult).isEqualTo(405);
 
+    var sampleInput2 = getInput("sampleDay13-2.txt");
+    var sampleResult2 = Valley.fromInput(sampleInput2).getResult();
+    assertThat(sampleResult2).isEqualTo(709);
+
     var input = getInput("inputDay13.txt");
-    var result = Valley.fromInput(sampleInput).getResult();
-    //
+    var result = Valley.fromInput(input).getResult();
+    //3248 too low
+    //2336 lower wtf
+    //3548 too low
+    // 16376 too low
+    //30802
+    log.info("result is {}", result);
+  }
+
+  @Test
+  void puzzle2() throws IOException {
+    var sampleInput = getInput("sampleDay13-1.txt");
+    var sampleResult = Valley.fromInput(sampleInput).getResultWithSmudge();
+    assertThat(sampleResult).isEqualTo(400);
+
+    var sampleInput2 = getInput("sampleDay13-2.txt");
+    var sampleResult2 = Valley.fromInput(sampleInput2).getResultWithSmudge();
+    assertThat(sampleResult2).isEqualTo(1400);
+
+    var input = getInput("inputDay13.txt");
+    var result = Valley.fromInput(input).getResult();
+    //3248 too low
+    //2336 lower wtf
+    //3548 too low
+    // 16376 too low
+    //30802
     log.info("result is {}", result);
   }
 
