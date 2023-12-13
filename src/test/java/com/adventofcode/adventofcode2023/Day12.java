@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -13,56 +14,14 @@ import org.junit.jupiter.api.Test;
 @Slf4j
 public class Day12 {
 
-  enum Status {
-    BROKEN('#'),
-    OPERATIONAL('.'),
-    UNKNOWN('?');
-
-    private final char chr;
-
-    private Status(char chr) {
-      this.chr = chr;
-    }
-
-    public static Status fromChr(char chr) {
-      return Arrays.stream(Status.values()).filter(status -> status.chr == chr).findAny().orElseThrow();
-    }
-
-    @Override
-    public String toString() {
-      return String.valueOf(chr);
-    }
-  }
-
-  record Arrangement(List<Status> springs) {
-
-    boolean isValid(List<Integer> groups) {
-      int currentGroupIdx = 0;
-      int currentGroupCount = 0;
-      for (Status spring : springs) {
-        switch (spring) {
-          case BROKEN -> currentGroupCount++;
-          case OPERATIONAL -> {
-            if (currentGroupCount > 0) {
-              //close and evaluate current group
-              if (currentGroupIdx < groups.size() && currentGroupCount == groups.get(currentGroupIdx)) {
-                currentGroupCount = 0;
-                currentGroupIdx++;
-              } else {
-                return false;
-              }
-            }
-          }
-        }
-      }
-//      System.out.println(springs + " " + groups);//[., #, ., ., ., #, ., ., ., ., #, #, #, .] [1, 1, 3]
-      return (currentGroupIdx == groups.size() && currentGroupCount == 0)
-          || (currentGroupIdx + 1 == groups.size() && currentGroupCount == groups.get(currentGroupIdx));
-    }
+  record Arrangement(String springs) {
 
   }
 
   record Row(Arrangement springs, List<Integer> groups) {
+
+    private static final Function<ArrangementPart, Long> memoize = Memoizer.memoize(Row::generateArrangements);
+    ;
 
     static Row fromInput(String input) {
       return fromInput(springString(input), groupString(input));
@@ -85,73 +44,84 @@ public class Day12 {
     }
 
     private static Row fromInput(String springString, String groupString) {
-      var springs = springString.chars().mapToObj(c -> Status.fromChr((char) c)).toList();
       var groups = Arrays.stream(groupString.split(",")).map(Integer::parseInt).toList();
-      return new Row(new Arrangement(springs), groups);
+      return new Row(new Arrangement(springString), groups);
     }
 
     public long getPossibleArrangements() {
-      return generateArrangements(springs);
+      return generateArrangements(new ArrangementPart(springs.springs(), groups));
     }
 
-    private long generateArrangements(Arrangement springs) {
-      return generateArrangements(springs.springs().toArray(new Status[0]), 0);
+    //private Function<ArrangementPart, Long> memoizer = Memoizer.memoize(this::generateArrangements);
+
+    private static long generateArrangementsMemoize(ArrangementPart arrangementPart) {
+      return memoize.apply(arrangementPart);
     }
 
-    private long generateArrangements(Status[] current, int index) {
-      if (index == current.length) {
-        var arrangement = new Arrangement(List.of(current));
-        if (arrangement.isValid(groups)) {
-          return 1;
-        }
-        return 0;
+    record ArrangementPart(String current, List<Integer> groups) {
+
+    }
+
+    private static long generateArrangements(ArrangementPart arrangementPart) {
+      var current = arrangementPart.current();
+      var currentGroups = arrangementPart.groups();
+      if (current.isEmpty()) {
+        return currentGroups.isEmpty() ? 1 : 0;
       }
 
-      if (Status.UNKNOWN.equals(current[index])) {
-        if (Memoizer.memoize(this::isPreInValid).apply(current)) {
-          return 0;
-        }
+      var currentSymbol = current.substring(0, 1);
+      if (".".equals(currentSymbol)) {
+        //operational, continue
+        var newArrangement = current.substring(1);
+        return generateArrangementsMemoize(new ArrangementPart(newArrangement, currentGroups));
+      }
 
-        current[index] = Status.BROKEN;
-        long brokenCount = generateArrangements(current, index + 1);
+      if ("?".equals(currentSymbol)) {
 
-        current[index] = Status.OPERATIONAL;
-        long operationCount = generateArrangements(current, index + 1);
-
-        //backtrack
-        current[index] = Status.UNKNOWN;
+        var newArrangement = current.substring(1);
+        long brokenCount = generateArrangementsMemoize(new ArrangementPart("#" + newArrangement, currentGroups));
+        long operationCount = generateArrangementsMemoize(new ArrangementPart("." + newArrangement, currentGroups));
 
         return brokenCount + operationCount;
       } else {
-        return generateArrangements(current, index + 1);
+        if (currentGroups.isEmpty()) {
+          return 0;
+        }
+        // # broken, reduce from current group and checks if still valid
+        //next broken chars for current group should either be broken or unknown, if not then its invalid
+        int nextOperational = current.indexOf('.');
+        Integer firstGroup = currentGroups.getFirst();
+        if (nextOperational > -1 && nextOperational < firstGroup) {
+          //group doesn't fit
+          return 0;
+        }
+        int maxGroupSize = findMaxBrokenLength(current);
+        if (!currentGroups.isEmpty() && maxGroupSize >= firstGroup) {
+          if (current.length() == firstGroup) {
+            return currentGroups.size() == 1 ? 1 : 0;
+          }
+          if (current.charAt(firstGroup) == '#') {
+            return 0;
+          }
+          //remove group + a required .
+          return generateArrangementsMemoize(new ArrangementPart(current.substring(firstGroup + 1), currentGroups.subList(1, currentGroups.size())));
+        } else {
+          return 0;
+        }
       }
     }
 
-    private boolean isPreInValid(Status[] current) {
-      int currentGroupIdx = 0;
-      int currentGroupCount = 0;
-      for (Status status : current) {
-        switch (status) {
-          case BROKEN -> currentGroupCount++;
-          case OPERATIONAL -> {
-            if (currentGroupCount > 0) {
-              //close and evaluate current group
-              if (currentGroupIdx < groups.size() && currentGroupCount == groups.get(currentGroupIdx)) {
-                currentGroupCount = 0;
-                currentGroupIdx++;
-              } else {
-                return true;
-              }
-            }
-          }
-          case UNKNOWN -> {
-            return false;
-          }
-          default -> throw new IllegalStateException("Unexpected value: " + status);
+    public static int findMaxBrokenLength(String str) {
+      int prefixLength = 0;
+
+      for (char ch : str.toCharArray()) {
+        if (ch == '#' || ch == '?') {
+          prefixLength++;
+        } else {
+          break;  // Stop counting when a different character is encountered
         }
       }
-      return false;
-
+      return prefixLength;
     }
   }
 
@@ -168,8 +138,9 @@ public class Day12 {
     public long arrangementsCount() {
       return rows()
           .stream()
-          .parallel()
+//          .parallel()
           .mapToLong(Row::getPossibleArrangements)
+          .peek(counts -> System.out.println("counts: " + counts))
           .sum();
     }
   }
@@ -198,7 +169,7 @@ public class Day12 {
     System.out.println("now the real stuff...");
     var input = getInput("inputDay12.txt");
     var result = Field.unfold(input).arrangementsCount();
-    //
+    //4232520187524
     log.info("result is {}", result);
   }
 
