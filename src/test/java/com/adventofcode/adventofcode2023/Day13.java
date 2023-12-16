@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -46,37 +45,62 @@ public class Day13 {
     }
 
     public int getResult() {
-      return getVerticalResult() + getHorizontalResult();
+      return getVerticalResult(-1).or(() -> getHorizontalResult(-1)).orElseThrow();
     }
 
-    private int getVerticalResult() {
+    public int getResultWithSmudge() {
+      var originalHorizontal = getHorizontalResult(-1);
+      var originalVertical = getVerticalResult(-1);
+      int original = originalHorizontal.or(() -> originalVertical).orElseThrow();
+      int originalIdx = original > 100 ? original / 100 - 1 : original - 1;
 
-      return getAllReflections(transposed())
-              .stream()
-              .peek(System.out::println)
-              .mapToInt(firstReflection ->firstReflection + 1)
-//              .mapToInt(firstReflection -> Math.min(firstReflection + 1, this.transposed().length - firstReflection + 1))
-              .max().orElse(0);
-    }
+      for (int y = 0; y < matrix().length; y++) {
+        for (int x = 0; x < matrix()[y].length; x++) {
+          var ori = matrix()[y][x];
+          var ori2 = transposed()[x][y];
+          if (ori != ori2) {
+            throw new RuntimeException("oei oei");
+          }
+          matrix()[y][x] = ori == '#' ? '.' : '#';
+          transposed()[x][y] = ori == '#' ? '.' : '#';
+          var smudged = getHorizontalResult(originalHorizontal.isPresent() ? originalIdx : -1)
+              .filter(i -> !i.equals(original))
+              .or(() -> getVerticalResult(originalVertical.isPresent() ? originalIdx : -1))
+              .filter(i -> !i.equals(original));
+          if (smudged.isPresent()) {
+            return smudged.get();
+          }
+          matrix()[y][x] = ori;
+          transposed()[x][y] = ori;
 
-    private int getHorizontalResult() {
-       return getAllReflections(matrix())
-               .stream()
-               .mapToInt(firstReflection -> (firstReflection + 1) * 100)
-//               .mapToInt(firstReflection -> Math.min(firstReflection + 1, this.matrix().length - firstReflection +1) * 100)
-               .max().orElse(0);
-    }
-
-    private List<Integer> getAllReflections(char[][] matrix) {
-      List<Integer> reflections = new ArrayList<>();
-      for (int i = 0; i < matrix.length - 1; i++) {
-        var x = matrix[i];
-        var y = matrix[i + 1];
-        if (Arrays.equals(x, y) && ensureMiddle(matrix, i)) {
-          reflections.add(i);
         }
       }
-      return reflections;
+
+      throw new RuntimeException("oei");
+
+    }
+
+    private Optional<Integer> getVerticalResult(int ignoreResultIdx) {
+      return getReflections(transposed(), ignoreResultIdx)
+          .map(reflection -> reflection + 1);
+    }
+
+    private Optional<Integer> getHorizontalResult(int ignoreResultIdx) {
+      return getReflections(matrix(), ignoreResultIdx)
+          .map(reflection -> (reflection + 1) * 100);
+    }
+
+    private Optional<Integer> getReflections(char[][] matrix, int ignoreResultIdx) {
+      for (int i = matrix.length - 2; i >= 0; i--) {
+        var x = matrix[i];
+        var y = matrix[i + 1];
+        if (Arrays.equals(x, y)) {
+          if (ensureMiddle(matrix, i) && ignoreResultIdx != i) {
+            return Optional.of(i);
+          }
+        }
+      }
+      return Optional.empty();
     }
 
     private boolean ensureMiddle(char[][] matrix, int middleX) {
@@ -84,12 +108,12 @@ public class Day13 {
         int middleToBegin = middleX - i / 2;
         int middleToEnd = 1 + middleX + i / 2;
 
-        if (middleToEnd >= matrix.length || middleToBegin < 0){
+        if (middleToEnd >= matrix.length || middleToBegin < 0) {
           return true;
         }
         var x = matrix[middleToBegin];
         var y = matrix[middleToEnd];
-        if(!Arrays.equals(x, y)){
+        if (!Arrays.equals(x, y)) {
           return false;
         }
       }
@@ -117,7 +141,7 @@ public class Day13 {
     }
 
     public int getResultWithSmudge() {
-      return 0;//TODO
+      return patterns().stream().mapToInt(Pattern::getResultWithSmudge).sum();
     }
   }
 
@@ -134,7 +158,7 @@ public class Day13 {
     var input = getInput("inputDay13.txt");
     var result = Valley.fromInput(input).getResult();
     //3248 too low
-    //2336 lower wtf
+    //2336 lower wtfSys
     //3548 too low
     // 16376 too low
     //30802
@@ -152,12 +176,8 @@ public class Day13 {
     assertThat(sampleResult2).isEqualTo(1400);
 
     var input = getInput("inputDay13.txt");
-    var result = Valley.fromInput(input).getResult();
-    //3248 too low
-    //2336 lower wtf
-    //3548 too low
-    // 16376 too low
-    //30802
+    var result = Valley.fromInput(input).getResultWithSmudge();
+    //37876
     log.info("result is {}", result);
   }
 
