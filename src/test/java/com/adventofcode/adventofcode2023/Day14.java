@@ -183,23 +183,40 @@ public class Day14 {
 
     record PatternLength(int length, int cyclesAdded){}
 
-    public PatternLength findPatternLength() {
+    public PatternLength findPatternLength(int minRepeat) {
       var tilted = this;
       var cycles = 0;
       List<Integer> results = new ArrayList<>();
-      do {
-        results.add(sumRound());
+
+      for (int i = 0; i < minRepeat; i++){
         tilted = cycle();
+        results.add(tilted.sumRound());
         cycles++;
-      } while (tilted.sumRound() != results.getFirst());
+      }
+
+      boolean pattern = false;
+      do {
+//        results.add(tilted.sumRound());
+//        tilted = cycle();
+//        cycles++;
+
+        pattern = true;
+        List<Integer> subResults = new ArrayList<>();
+        for (int res: results){
+          tilted = cycle();
+          cycles++;
+          subResults.add(tilted.sumRound());
+          if(res != tilted.sumRound()){
+            pattern = false;
+            results.addAll(subResults);
+            break;
+          }
+        }
+
+      } while (!pattern);
 
       // repeat to ensure a complete pattern
-      results = new ArrayList<>();
-      do {
-        results.add(sumRound());
-        tilted = cycle();
-        cycles++;
-      } while (tilted.sumRound() != results.getFirst());
+
 
       log.info(results.toString());
 
@@ -282,18 +299,29 @@ public class Day14 {
     platform = Platform.fromInput(sampleInput).cycles(cycles);
 //    var patternLength = 7;
 //    assertThat(platform.findPatternLength()).isEqualTo(patternLength);
-    var patternLength = platform.findPatternLength();
+    var patternLength = platform.findPatternLength(5);
     cycles = cycles + patternLength.cyclesAdded;
 
     var totalCycles = 1000000000L;
-    var repeatCount = (totalCycles - cycles) / patternLength.length;
     int mod = (int) ((totalCycles - cycles) % patternLength.length);
 
     log.info("mod: {}", mod);
-    var currentSum = platform.sumRound();
     assertThat(platform.cycles(mod).sumRound()).isEqualTo(64);
 
     log.info("sample result {}", mod);
+
+    //real
+
+    cycles = 10001;
+    var input = getInput("inputDay14.txt");
+    var realPLatform = Platform.fromInput(input).cycles(cycles);
+    patternLength = realPLatform.findPatternLength(5);
+    cycles = cycles + patternLength.cyclesAdded;
+    mod = (int) ((totalCycles - cycles) % patternLength.length);
+    log.info("real mod: {}", mod);
+    log.info("result is {}", realPLatform.cycles(mod).sumRound());
+    //[79730, 79736, 79733, 79743, 79742, 79734, 79723, 79716, 79708, 79714, 79711, 79708, 79718, 79724, 79727, 79731, 79718, 79723]
+    //79723
   }
 
 }
