@@ -3,7 +3,37 @@ package com.adventofcode.advent2023
 import java.io.File
 import java.util.PriorityQueue
 
-data class Node(val x: Int, val y: Int, val g: Int, val h: Int, val parent: Node?) : Comparable<Node> {
+enum class Direction(val x: Int, val y: Int) {
+    UP(0, -1),
+    RIGHT(1, 0),
+    DOWN(0, 1),
+    LEFT(-1, 0);
+
+    companion object {
+        fun fromCoordinates(x: Int, y: Int): Direction {
+            return when {
+                x == 0 && y == -1 -> UP
+                x == 1 && y == 0 -> RIGHT
+                x == 0 && y == 1 -> DOWN
+                x == -1 && y == 0 -> LEFT
+                else -> throw IllegalArgumentException("Invalid coordinates")
+            }
+        }
+    }
+}
+
+data class Coordinates(val x: Int, val y: Int) {
+    override fun equals(other: Any?): Boolean {
+        if (other !is Coordinates) return false
+        return this.x == other.x && this.y == other.y
+    }
+
+    override fun hashCode(): Int {
+        return x + (y * 100)
+    }
+}
+
+data class Node(val coordinates: Coordinates, val g: Int, val h: Int, val parent: Node?, val direction : Direction, val straightCount : Int) : Comparable<Node> {
     val f: Int
         get() = g + h
 
@@ -13,38 +43,43 @@ data class Node(val x: Int, val y: Int, val g: Int, val h: Int, val parent: Node
 
     override fun equals(other: Any?): Boolean {
         if (other !is Node) return false
-        return this.x == other.x && this.y == other.y
+        return this.coordinates.equals(other.coordinates)
+                && this.direction == other.direction
+    }
+
+    override fun hashCode(): Int {
+        return coordinates.x + (coordinates.y * 100) + (direction.x * 10000)
     }
 }
 
 
 class DefaultXStar(val grid: Array<IntArray>) {
     fun heuristic(a: Node, b: Node): Int {
-        return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+        return Math.abs(a.coordinates.x - b.coordinates.x) + Math.abs(a.coordinates.y - b.coordinates.y)
     }
 
     fun aStar(start: Node, goal: Node): List<Node> {
         val openSet = PriorityQueue<Node>()
-        val closedSet = mutableSetOf<Node>()
+        val closedSet = mutableSetOf<Coordinates>()
         openSet.add(start)
 
         while (openSet.isNotEmpty()) {
             val current = openSet.poll()
 
-            if (current.x == goal.x && current.y == goal.y) {
+            if (current.coordinates == goal.coordinates) {
                 return reconstructPath(current)
             }
 
-            closedSet.add(current)
+            closedSet.add(current.coordinates)
 
             for (neighbor in getNeighbors(current)) {
-                if (closedSet.contains(neighbor)) continue
+                if (closedSet.contains(neighbor.coordinates)) continue
 
-                val tentativeG = current.g + grid[neighbor.y][neighbor.x]
+                val tentativeG = current.g + grid[neighbor.coordinates.y][neighbor.coordinates.x]
 
                 if (!openSet.contains(neighbor) || tentativeG < neighbor.g) {
                     val h = heuristic(neighbor, goal)
-                    val newNode = Node(neighbor.x, neighbor.y, tentativeG, h, current)
+                    val newNode = Node(neighbor.coordinates, tentativeG, h, current, neighbor.direction, neighbor.straightCount)
                     openSet.add(newNode)
                 }
             }
@@ -55,14 +90,17 @@ class DefaultXStar(val grid: Array<IntArray>) {
 
     fun getNeighbors(node: Node): List<Node> {
         val neighbors = mutableListOf<Node>()
-        val directions = listOf(Pair(0, 1), Pair(1, 0), Pair(0, -1), Pair(-1, 0))
+        val directions = Direction.entries
 
         for (direction in directions) {
-            val newX = node.x + direction.first
-            val newY = node.y + direction.second
+            val newX = node.coordinates.x + direction.x
+            val newY = node.coordinates.y + direction.y
+            val newCoordinates = Coordinates(newX, newY)
 
-            if (newX in grid.indices && newY in grid[0].indices) {
-                neighbors.add(Node(newX, newY, node.g + grid[newY][newX], 0, node))
+            if (newX in grid.indices && newY in grid[0].indices && newCoordinates != node.coordinates) {
+                val directionCount = if (direction == node.direction) node.straightCount + 1 else 0
+                if (directionCount > 2) continue
+                neighbors.add(Node(newCoordinates, node.g + grid[newY][newX], 0, node, direction, directionCount))
             }
         }
 
@@ -87,17 +125,19 @@ fun main() {
     val grid = loadFileInto2DArray(filePath)
 
     val aStar = DefaultXStar(grid)
-    val start = Node(0, 0, 0, 0, null)
-    val goal = Node(grid.size - 1, grid[0].size - 1, 0, 0, null)
+    val startCoordinates = Coordinates(0, 0)
+    val goalCoordinates = Coordinates(grid.size - 1, grid[0].size - 1)
+    val start = Node(startCoordinates, 0, 0, null, Direction.UP,0)
+    val goal = Node(goalCoordinates, 0, 0, null, Direction.UP,0)
 
     val path = aStar.aStar(start, goal)
 
     if (path.isNotEmpty()) {
         println("Path found:")
         for (node in path) {
-            println("(${node.x}, ${node.y})")
+            println("(${node.coordinates.x}, ${node.coordinates.y})")
         }
-        path.map { grid[it.y][it.x] }.sum().let { println("Total cost: $it") }
+        path.map { grid[it.coordinates.y][it.coordinates.x] }.sum().let { println("Total cost: $it") }
     } else {
         println("No path found")
     }
