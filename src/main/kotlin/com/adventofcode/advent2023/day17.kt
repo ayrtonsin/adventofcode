@@ -1,5 +1,6 @@
 package com.adventofcode.advent2023
 
+import org.assertj.core.api.Assertions.assertThat
 import java.io.File
 import java.util.PriorityQueue
 
@@ -8,18 +9,6 @@ enum class Direction(val x: Int, val y: Int) {
     RIGHT(1, 0),
     DOWN(0, 1),
     LEFT(-1, 0);
-
-    companion object {
-        fun fromCoordinates(x: Int, y: Int): Direction {
-            return when {
-                x == 0 && y == -1 -> UP
-                x == 1 && y == 0 -> RIGHT
-                x == 0 && y == 1 -> DOWN
-                x == -1 && y == 0 -> LEFT
-                else -> throw IllegalArgumentException("Invalid coordinates")
-            }
-        }
-    }
 }
 
 data class Coordinates(val x: Int, val y: Int) {
@@ -43,7 +32,7 @@ data class Node(val coordinates: Coordinates, val g: Int, val h: Int, val parent
 
     override fun equals(other: Any?): Boolean {
         if (other !is Node) return false
-        return this.coordinates.equals(other.coordinates)
+        return this.coordinates == other.coordinates
                 && this.direction == other.direction
     }
 
@@ -53,7 +42,7 @@ data class Node(val coordinates: Coordinates, val g: Int, val h: Int, val parent
 }
 
 
-class DefaultXStar(val grid: Array<IntArray>) {
+class XStarLimitByDirectionCount(val grid: Array<IntArray>) {
     fun heuristic(a: Node, b: Node): Int {
         return Math.abs(a.coordinates.x - b.coordinates.x) + Math.abs(a.coordinates.y - b.coordinates.y)
     }
@@ -72,7 +61,8 @@ class DefaultXStar(val grid: Array<IntArray>) {
 
             closedSet.add(current.coordinates)
 
-            for (neighbor in getNeighbors(current)) {
+            val neighbors = getNeighbors(current)
+            for (neighbor in neighbors) {
                 if (closedSet.contains(neighbor.coordinates)) continue
 
                 val tentativeG = current.g + grid[neighbor.coordinates.y][neighbor.coordinates.x]
@@ -97,7 +87,8 @@ class DefaultXStar(val grid: Array<IntArray>) {
             val newY = node.coordinates.y + direction.y
             val newCoordinates = Coordinates(newX, newY)
 
-            if (newX in grid.indices && newY in grid[0].indices && newCoordinates != node.coordinates) {
+
+            if (newY in grid.indices && newX in grid[0].indices && (node.parent == null || newCoordinates != node.parent.coordinates)) {
                 val directionCount = if (direction == node.direction) node.straightCount + 1 else 0
                 if (directionCount > 2) continue
                 neighbors.add(Node(newCoordinates, node.g + grid[newY][newX], 0, node, direction, directionCount))
@@ -121,26 +112,47 @@ class DefaultXStar(val grid: Array<IntArray>) {
 }
 
 fun main() {
-    val filePath = "src/main/resources/2023/sampleDay17-1.txt"
-    val grid = loadFileInto2DArray(filePath)
+    part1()
+}
 
-    val aStar = DefaultXStar(grid)
+private fun part1() {
+    assertThat(shortestPath("src/main/resources/2023/sampleDay17-1.txt")).isEqualTo(102)
+    val score = shortestPath("src/main/resources/2023/inputDay17.txt")
+    //906,907 is too low
+    println("result for input is: $score")
+}
+
+private fun shortestPath(filePath: String): Int {
+    val grid = loadFileInto2DArray(filePath)
+    val aStar = XStarLimitByDirectionCount(grid)
     val startCoordinates = Coordinates(0, 0)
-    val goalCoordinates = Coordinates(grid.size - 1, grid[0].size - 1)
-    val start = Node(startCoordinates, 0, 0, null, Direction.UP,0)
-    val goal = Node(goalCoordinates, 0, 0, null, Direction.UP,0)
+    val goalCoordinates = Coordinates(grid[0].size - 1, grid.size - 1)
+    val start = Node(startCoordinates, 0, 0, null, Direction.RIGHT, 0)
+    val goal = Node(goalCoordinates, 0, 0, null, Direction.UP, 0)
 
     val path = aStar.aStar(start, goal)
+    val score = calculateScore(path, grid)
+    printPath(path)
+    return score
+}
 
+private fun printPath(path: List<Node>) {
     if (path.isNotEmpty()) {
         println("Path found:")
         for (node in path) {
             println("(${node.coordinates.x}, ${node.coordinates.y})")
         }
-        path.map { grid[it.coordinates.y][it.coordinates.x] }.sum().let { println("Total cost: $it") }
     } else {
         println("No path found")
     }
+}
+
+private fun calculateScore(
+    path: List<Node>,
+    grid: Array<IntArray>
+): Int {
+    val score = path.map { grid[it.coordinates.y][it.coordinates.x] }.sum()
+    return score
 }
 
 fun loadFileInto2DArray(filePath: String): Array<IntArray> {
