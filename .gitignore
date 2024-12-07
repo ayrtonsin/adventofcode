@@ -35,3 +35,4 @@ build/
 
 ##input
 /src/main/resources/**/InputDay*.txt
+/src/main/resources/**/inputDay*.txt
