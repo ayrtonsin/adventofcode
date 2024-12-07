@@ -5,6 +5,9 @@ import java.io.File
 
 
 data class InputDT(val grid: List<List<Char>>) {
+    fun getScore(): Int {
+        return 0
+    }
 
 }
 
@@ -33,11 +36,11 @@ private fun part2(day: Int) {
 }
 
 private fun getScorePart1(fileName: String): Int {
-    return fileToInputD6(fileName).plotRoute().map { it.countCrosses() }.orElse(-1)
+    return fileToInputDT(fileName).getScore()
 }
 
 private fun getScorePart2(fileName: String): Int {
-    return fileToInputD6(fileName).findInfiniteRoutesAddingSingleConstruction()
+    return fileToInputDT(fileName).getScore()
 }
 
 fun fileToInputDT(fileName: String): InputDT {
